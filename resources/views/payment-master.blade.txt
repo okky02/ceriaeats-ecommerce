@@ -1,0 +1,559 @@
+@extends('layouts.admin')
+
+@section('content')
+    <div class="min-h-screen bg-pink-100 sm:ml-64 pt-28 pb-12 px-6">
+        <div class="max-w-8xl mx-auto space-y-8">
+            @if (session('success'))
+                <x-success-toast title="Success!!" message="{{ session('success') }}" />
+            @endif
+
+            @if (session('error_title'))
+                <x-error-toast title="{{ session('error_title') }}" message="{{ session('error_message') }}" />
+            @endif
+
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 bg-white shadow-lg rounded-2xl">
+                <h2 class="text-2xl font-semibold text-pink-600">
+                    <i class="fas fa-credit-card mr-2"></i>Payment Methods
+                </h2>
+                <button
+                    class="flex items-center bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300"
+                    onclick="openAddModal()">
+                    <i class="fas fa-plus mr-2"></i>Add Payment
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto bg-white p-6 shadow-lg rounded-2xl">
+                <!-- Controls -->
+                <div class="flex justify-between items-center mb-4">
+                    <!-- Show -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-pink-600">Show:</span>
+                        <form id="perPageForm" method="GET">
+                            <select name="perPage" onchange="document.getElementById('perPageForm').submit()"
+                                class="border border-pink-400 rounded-lg px-3 py-2 text-sm focus:ring-pink-500 focus:border-pink-500">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="all">All</option>
+                            </select>
+                        </form>
+                        <span class="text-sm text-pink-600">entries</span>
+                    </div>
+
+                    <div class="relative flex items-center space-x-2">
+                        <form method="GET" action="" class="flex items-center space-x-2 relative">
+                            <!-- Input Search -->
+                            <div class="relative">
+                                <input type="text" name="search" placeholder="Search..." value="{{ request('search') }}"
+                                    class="border rounded-lg px-4 py-2 border-pink-400 pl-10 text-sm focus:ring-pink-500 focus:border-pink-500">
+                                <i
+                                    class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-pink-500"></i>
+                            </div>
+                            <!-- Sort Dropdown -->
+                            <div class="relative">
+                                <select name="sort"
+                                    class="border rounded-lg px-4 py-2 border-pink-400 text-sm focus:ring-pink-500 focus:border-pink-500"
+                                    onchange="this.form.submit()">
+                                    <option value="desc" {{ request('sort') == 'desc' ? 'selected' : '' }}>Latest
+                                    </option>
+                                    <option value="asc" {{ request('sort') == 'asc' ? 'selected' : '' }}>Longest
+                                    </option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <table class="min-w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-pink-600 uppercase border-b">
+                            <th class="py-3 px-4">No</th>
+                            <th class="py-3 px-4">Img</th>
+                            <th class="py-3 px-4">Bank</th>
+                            <th class="py-3 px-4">Name</th>
+                            <th class="py-3 px-4">account number</th>
+                            <th class="py-3 px-4">Updated At</th>
+                            <th class="py-3 px-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-700">
+                        <tr class="border-b hover:bg-pink-50">
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4"></td>
+                            <td class="py-3 px-4 space-x-2">
+                                <button onclick="openEditModal()"
+                                    class="text-blue-600 hover:text-blue-700 font-semibold transition duration-300">
+                                    <i class="fas fa-edit mr-1 text-lg"></i>
+                                </button>
+                                <button onclick="openDeleteModal()"
+                                    class="text-red-600 hover:text-red-700 font-semibold transition duration-300">
+                                    <i class="fas fa-trash-alt mr-1 text-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {{-- @empty
+                            <tr>
+                                <td colspan="5" class="text-center pt-10">No categories found.</td>
+                            </tr>
+                        @endforelse --}}
+                    </tbody>
+                </table>
+
+                <div class="mt-4">
+                    {{-- {{ $categories->appends(['perPage' => $perPage])->links('pagination::tailwind') }} --}}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah -->
+    <div id="modal-add-payment" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md space-y-4 shadow-xl animate-fade-in">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-pink-600">
+                    <i class="fas fa-plus-circle mr-2"></i>Tambah Metode Pembayaran
+                </h3>
+                <button onclick="closeAddModal()" aria-label="Close modal"
+                    class="w-8 h-8 flex items-center justify-center rounded-full text-red-500 hover:text-white hover:bg-red-500 text-xl transition duration-300">
+                    <i class="fas fa-times relative top-[1px]"></i>
+                </button>
+            </div>
+            <form x-data="{ loading: false }" @submit="loading = true" method="post" action=""
+                enctype="multipart/form-data">
+                @csrf
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama</label>
+                        <input type="text" name="nama_kategori"
+                            class="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-300"
+                            placeholder="Masukkan nama kategori..." required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
+                        <input type="text" name="nama_kategori"
+                            class="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-300"
+                            placeholder="Masukkan nama kategori..." required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">No Rekening</label>
+                        <input type="text" name="nama_kategori"
+                            class="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-300"
+                            placeholder="Masukkan nama kategori..." required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Gambar</label>
+                        <div class="flex items-center gap-4 mt-2 mb-4">
+                            <img id="preview" src="" alt="Preview"
+                                class="w-24 h-24 object-cover object-cover rounded-lg hidden border border-pink-300" />
+                            <div id="filename" class="text-sm text-gray-700 hidden break-all"></div>
+                        </div>
+                        <div class="flex items-center justify-center w-full">
+                            <label
+                                class="flex flex-col w-full h-32 border-2 border-dashed rounded-lg hover:bg-gray-100 transition duration-300 cursor-pointer">
+                                <div class="flex flex-col items-center justify-center pt-7">
+                                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm text-gray-500">Click to upload</p>
+                                </div>
+                                <input id="addGambarInput" type="file" name="gambar" class="opacity-0 absolute"
+                                    accept="image/*" onchange="previewImage(event)" required>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 space-x-3">
+                    <x-spinner-button loading="loading" label="Simpan" loadingLabel="Menyimpan..." bgColor="bg-pink-600"
+                        hoverColor="hover:bg-pink-700" ringColor="focus:ring-pink-500"
+                        icon='<i class="fa-solid fa-floppy-disk mr-2"></i>' />
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Modal Edit -->
+    <div id="modal-edit-payment"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md space-y-4 shadow-xl animate-fade-in">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-blue-600">
+                    <i class="fas fa-edit mr-2"></i>Edit Kategori
+                </h3>
+                <button onclick="closeEditModal()" aria-label="Close modal"
+                    class="w-8 h-8 flex items-center justify-center rounded-full text-red-500 hover:text-white hover:bg-red-500 text-xl transition duration-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editForm" method="POST" action="" enctype="multipart/form-data" x-data="{ loading: false }"
+                @submit="loading = true">
+                @csrf
+                @method('PUT')
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kategori</label>
+                        <input type="text" id="editNamaKategori" name="nama_kategori" value=""
+                            class="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Saat Ini</label>
+                        <div id="editImageWrapper" class="flex items-center space-x-4 mt-4">
+                            <img id="editCurrentImage" src="" class="rounded-lg w-24 h-24 object-cover"
+                                alt="Current Image">
+                            <span class="text-sm text-gray-500">Change image below</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Gambar Baru</label>
+                        <div class="flex items-center justify-center w-full">
+                            <label
+                                class="flex flex-col w-full h-32 border-2 border-dashed rounded-lg hover:bg-gray-100 transition duration-300 cursor-pointer">
+                                <div class="flex flex-col items-center justify-center pt-7">
+                                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm text-gray-500">Click to upload</p>
+                                </div>
+                                <input id="editGambarInput" name="gambar" type="file" class="opacity-0 absolute"
+                                    accept="image/*" onchange="previewEditImage(event)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 space-x-3">
+                    <x-spinner-button loading="loading" label="Edit" loadingLabel="Mengedit..." bgColor="bg-blue-600"
+                        hoverColor="hover:bg-blue-700" ringColor="focus:ring-blue-500"
+                        icon='<i class="fa-solid fa-trash-alt mr-2"></i>' />
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Delete -->
+    <div id="modal-delete-payment"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm space-y-4 shadow-xl animate-fade-in text-center">
+            <div class="text-red-600 text-3xl">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800">Hapus Pembayaran?</h3>
+            <p class="text-sm text-gray-600">Apakah kamu yakin ingin menghapus pembayaran ini? Tindakan ini tidak dapat
+                dibatalkan.</p>
+            <div class="flex justify-center mt-6 space-x-3">
+                <button onclick="closeDeleteModal()"
+                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-300">
+                    Batal
+                </button>
+                <form id="deleteForm" x-data="{ loading: false }" @submit="loading = true" method="POST" action="">
+                    @csrf
+                    @method('DELETE')
+                    <x-spinner-button loading="loading" label="Hapus" loadingLabel="Menghapus..." bgColor="bg-red-600"
+                        hoverColor="hover:bg-red-700" ringColor="focus:ring-red-500"
+                        icon='<i class="fa-solid fa-trash-alt mr-2"></i>' />
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal
+        function openAddModal() {
+            document.getElementById('modal-add-payment').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('modal-add-payment').classList.add('hidden');
+        }
+
+        function openEditModal() {
+            document.getElementById('modal-edit-payment').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('modal-edit-payment').classList.add('hidden');
+        }
+
+        function openDeleteModal() {
+            document.getElementById('modal-delete-payment').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('modal-delete-payment').classList.add('hidden');
+        }
+    </script>
+
+
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+@endsection
+
+
+=================================================================================================
+
+model paymentmethod
+class PaymentMethod extends Model
+{
+    protected $fillable = [
+        'gambar',
+        'bank',
+        'nama',
+        'no_rekening',
+    ];
+}
+
+model paymentproof
+class PaymentProof extends Model
+{
+    protected $fillable = [
+        'user_id',
+        'order_id',
+        'image',
+        'status',
+    ];  
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+
+paymentcontroller
+<?php
+
+namespace App\Http\Controllers\User;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use App\Models\Order;
+use App\Models\PaymentMethod;
+use App\Models\PaymentProof;
+
+class PaymentController extends Controller
+{
+    public function payment(Order $order)
+    {
+        $user = Auth::user();
+
+        // Pastikan user hanya bisa akses order miliknya
+        if ($order->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $order->load('items.product');
+
+        $paymentMethods = PaymentMethod::all();
+
+        return view('user.payment-master', [
+            'order' => $order,
+            'user' => $user,
+            'paymentMethods' => $paymentMethods,
+        ]);
+    }
+
+    public function confirmPayment(Request $request, Order $order)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                Rule::unique('users')->ignore($user->id),
+            ],
+            'phone' => 'required|string|max:20',
+            'address' => 'required|string|max:255',
+            'proof' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+        ]);
+
+        $proofPath = $request->file('proof')?->store('payment_proofs', 'public');
+
+        if (!$proofPath) {
+            return back()->with('error', 'Gagal upload bukti pembayaran. Coba lagi.');
+        }
+
+        PaymentProof::create([
+            'user_id' => $user->id,
+            'order_id' => $order->id,
+            'image' => $proofPath, // ✅ pastikan ini tidak null
+            'status' => 'pending',
+        ]);
+
+        $order->update([
+            'status' => 'waiting_confirmation',
+        ]);
+
+        return redirect()->route('user.order-master')->with('success', 'Bukti pembayaran berhasil dikirim.');
+    }
+}
+
+routes/user.php
+use App\Http\Controllers\User\PaymentController;
+
+Route::middleware(['auth', 'role:user'])->prefix('user')->group(function () {
+
+    Route::get('/payment/{order}', [PaymentController::class, 'payment'])->name('user.payment-master');
+    Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirmPayment'])->name('user.payment.confirm');
+
+
+payment-master.blade.php
+<form action="{{ route('user.payment.confirm', $order->id) }}" method="POST" enctype="multipart/form-data"
+                    class="space-y-5">
+                    @csrf
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block mb-2 text-sm font-medium text-pink-600">Name</label>
+                        <input id="name" name="name" type="text" value="{{ old('name', $user->name) }}"
+                            class="bg-pink-50 border border-pink-300 text-gray-900 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500 block w-full p-2.5"
+                            required autofocus autocomplete="name" />
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block mb-2 text-sm font-medium text-pink-600">Email</label>
+                        <input id="email" name="email" type="text" value="{{ old('email', $user->email) }}"
+                            class="bg-pink-50 border border-pink-300 text-gray-900 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500 block w-full p-2.5"
+                            required autofocus autocomplete="name" />
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone" class="block mb-2 text-sm font-medium text-pink-600">Phone</label>
+                        <input id="phone" name="phone" type="text" value="{{ old('phone', $user->phone) }}"
+                            class="bg-pink-50 border border-pink-300 text-gray-900 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500  block w-full p-2.5" />
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="address" class="block mb-2 text-sm font-medium text-pink-600">Address</label>
+                        <textarea id="address" name="address" required
+                            class="bg-pink-50 border border-pink-300 text-gray-900 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500 block w-full p-2.5">{{ old('address', $user->address) }}</textarea>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-pink-600">Payment Method</label>
+                        <div x-data="paymentDropdown()">
+
+                            <!-- Toast Copy -->
+                            <div x-show="showToast" x-transition:enter="transition transform ease-out duration-300"
+                                x-transition:enter-start="-translate-y-10 opacity-0"
+                                x-transition:enter-end="translate-y-0 opacity-100"
+                                x-transition:leave="transition transform ease-in duration-200"
+                                x-transition:leave-start="translate-y-0 opacity-100"
+                                x-transition:leave-end="-translate-y-10 opacity-0"
+                                class="text-center fixed top-11 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow-lg font-semibold text-lg z-50"
+                                x-text="toastMessage" x-cloak>
+                            </div>
+
+                            <!-- Dropdown Button -->
+                            <button @click="open = !open"
+                                class="bg-pink-50 border border-pink-300 rounded-lg px-4 py-2 flex justify-between items-center w-full focus:ring-pink-500 focus:border-pink-500 text-sm text-gray-900">
+                                <template x-if="selected">
+                                    <div class="flex items-center space-x-2">
+                                        <img :src="selected.image" class="w-6 h-6 object-contain" />
+                                        <span x-text="selected.bank"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!selected">
+                                    <span class="text-gray-400">-- Select a Payment Method --</span>
+                                </template>
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown List -->
+                            <ul x-show="open" @click.outside="open = false"
+                                class="absolute z-10 w-full bg-white border border-pink-300 rounded-lg mt-2 max-h-60 overflow-y-auto shadow-lg">
+                                @foreach ($paymentMethods as $method)
+                                    <li @click="selectBank({
+                                            bank: '{{ strtoupper($method->bank) }}',
+                                            image: '{{ asset('storage/' . $method->gambar) }}',
+                                            rekening: '{{ $method->no_rekening }}',
+                                            nama: '{{ $method->nama }}'
+                                        })"
+                                        class="px-4 py-2 hover:bg-pink-100 flex items-center space-x-2 cursor-pointer">
+                                        <img src="{{ asset('storage/' . $method->gambar) }}"
+                                            class="w-6 h-6 object-contain" />
+                                        <span>{{ strtoupper($method->bank) }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            <!-- Detail Informasi Tujuan Pembayaran -->
+                            <div x-show="selected" x-transition
+                                class="mt-4 p-4 border border-pink-200 rounded-lg bg-pink-50 text-sm text-gray-700 shadow space-y-2">
+                                <p>Kirim ke bank <strong x-text="selected.bank" class="text-pink-600"></strong></p>
+                                <p>No. Rekening:
+                                    <strong x-text="selected.rekening" class="text-pink-600"></strong>
+                                    <button @click="copyToClipboard(selected.rekening)"
+                                        class="ml-2 text-pink-600 hover:text-pink-800 text-lg">
+                                        <i class="fa-solid fa-clone"></i>
+                                    </button>
+                                </p>
+                                <p>a/n: <strong x-text="selected.nama" class="text-pink-600"></strong></p>
+                            </div>
+
+                            <!-- Hidden Input -->
+                            <input type="hidden" name="method" :value="selected?.bank">
+                        </div>
+                    </div>
+
+
+                    <!-- Proof of Payment -->
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-pink-600">Upload Proof of Payment</label>
+                        <input type="file" name="proof" required
+                            class="bg-pink-50 border border-pink-300 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500 block w-full p-2.5 text-pink-700 placeholder-pink-400" />
+                    </div>
+
+                    <div class="text-center pt-4 mt-4">
+                        <button type="submit"
+                            class="bg-pink-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-yellow-400 transition">
+                            Confirm Payment
+                        </button>
+                    </div>
+                </form>
+
+jadi gini saya ada penambahan untuk payment proofnya, jadi saat user submit
+ <button type="submit"
+                            class="bg-pink-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-yellow-400 transition">
+                            Confirm Payment
+                        </button>
+
+dia juga mendapatkan dari payment methodnya dan akan masuk ke tabel paymentproofnya, kamu paham ga maksud saya? jadi ada penambahan untuk mengirmkan data nya yaitu payment methodnya? jika bahan-bahan itu kurang, kamu bilang saja. mungkin kita mulai dari awal dan kamu tolong perlahan step by step ya
+
+kita mulai dari tabel dan modelnya dulu, saya sudah modifikasi tabel dan model paymentproof saya kamu jangan jawab dulu biar saya kasih dulu biar kamu paham
